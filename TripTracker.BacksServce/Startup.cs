@@ -1,18 +1,23 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Swashbuckle.AspNetCore.Swagger;
+using TripTracker.BacksServce.Data;
 using TripTracker.BacksServce.Models;
 
 namespace TripTracker.BacksServce
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        private IHostingEnvironment _appHost;
+
+        public Startup(IConfiguration configuration, IHostingEnvironment appHost)
         {
             Configuration = configuration;
+            _appHost = appHost;
         }
 
         public IConfiguration Configuration { get; }
@@ -20,8 +25,10 @@ namespace TripTracker.BacksServce
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddTransient<Repository>();
+            //services.AddTransient<Repository>();
             services.AddMvc(opt => opt.EnableEndpointRouting = false).SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+            services.AddDbContext<TripContext>(options => options.UseSqlite($"Data Source={_appHost.ContentRootPath}/JeffsTrips.db"));
 
             services.AddSwaggerGen(options =>
                 options.SwaggerDoc("v1", new Info {Title = "Trip Tracker", Version = "v1"}));
@@ -32,7 +39,10 @@ namespace TripTracker.BacksServce
         {
             app.UseSwagger();
 
-            app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "Trip Tracker v1"));
+            if (env.IsDevelopment() || env.IsStaging())
+            {
+                app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "Trip Tracker v1"));
+            }
 
             if (env.IsDevelopment())
             {
@@ -46,6 +56,8 @@ namespace TripTracker.BacksServce
 
             app.UseHttpsRedirection();
             app.UseMvc();
+
+            TripContext.SeedData(app.ApplicationServices);
         }
     }
 }
